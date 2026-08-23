@@ -1,0 +1,45 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-enterprise_banking}
+      MYSQL_USER: ${MYSQL_USER:-bankuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bankpass}
+    ports: ["${MYSQL_PORT:-3308}:3306"]
+    volumes: ["banking_mysql:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7.4-alpine
+    ports: ["${REDIS_PORT:-6379}:6379"]
+    volumes: ["banking_redis:/data"]
+    command: ["redis-server", "--appendonly", "yes"]
+  mongo:
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-fincore_audit}
+    ports: ["${MONGO_PORT:-27017}:27017"]
+    volumes: ["banking_mongo:/data/db"]
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    ports: ["9090:9090"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  grafana:
+    image: grafana/grafana:12.1.0
+    ports: ["3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+volumes:
+  banking_mysql:
+  banking_redis:
+  banking_mongo:
+  grafana_data:

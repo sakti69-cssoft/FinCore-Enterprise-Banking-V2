@@ -1,0 +1,1 @@
+package com.sakti.banking.dto; import java.math.BigDecimal; import java.util.List; public record DashboardResponse(UserResponse user,List<AccountResponse> accounts,BigDecimal totalBalance,List<TransactionResponse> recentTransactions){}

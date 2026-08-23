@@ -1,0 +1,1 @@
+package com.sakti.banking.dto; import jakarta.validation.constraints.*; public record BeneficiaryRequest(@NotBlank @Size(max=100) String name,@NotBlank @Size(max=20) String accountNumber,@Size(max=20) String bankCode){}

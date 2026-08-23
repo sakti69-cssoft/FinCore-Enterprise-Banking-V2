@@ -1,0 +1,12 @@
+target/
+.idea/
+.vscode/
+.settings/
+.project
+.classpath
+*.iml
+*.log
+.env
+.DS_Store
+frontend/node_modules/
+frontend/dist/

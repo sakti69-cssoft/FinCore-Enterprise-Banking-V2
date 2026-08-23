@@ -1,0 +1,9 @@
+replicaCount: 2
+image:
+  repository: YOUR_DOCKERHUB_USER/fincore
+  tag: latest
+service:
+  type: ClusterIP
+  port: 80
+env:
+  SPRING_PROFILES_ACTIVE: mysql

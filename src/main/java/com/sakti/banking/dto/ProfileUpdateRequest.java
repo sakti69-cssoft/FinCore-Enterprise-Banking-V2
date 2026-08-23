@@ -1,0 +1,1 @@
+package com.sakti.banking.dto; import jakarta.validation.constraints.*; import java.time.LocalDate; public record ProfileUpdateRequest(@NotBlank @Size(max=100) String fullName,@Size(max=20) String phone,@Size(max=250) String address,LocalDate dateOfBirth,@Size(max=100) String nomineeName,@Size(max=40) String nomineeRelation){}

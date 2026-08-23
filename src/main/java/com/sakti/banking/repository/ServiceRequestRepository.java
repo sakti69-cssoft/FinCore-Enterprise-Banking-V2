@@ -1,0 +1,1 @@
+package com.sakti.banking.repository; import com.sakti.banking.entity.ServiceRequest; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface ServiceRequestRepository extends JpaRepository<ServiceRequest,Long>{ List<ServiceRequest> findByOwnerEmailIgnoreCaseOrderByCreatedAtDesc(String email); }

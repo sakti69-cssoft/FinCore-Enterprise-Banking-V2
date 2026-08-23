@@ -1,0 +1,1 @@
+package com.sakti.banking.dto; import com.sakti.banking.entity.ServiceRequestType; import jakarta.validation.constraints.*; public record ServiceRequestRequest(@NotNull ServiceRequestType type,@Size(max=500) String details){}

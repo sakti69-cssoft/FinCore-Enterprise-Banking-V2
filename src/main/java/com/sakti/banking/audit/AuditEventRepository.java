@@ -1,0 +1,1 @@
+package com.sakti.banking.audit; import org.springframework.data.mongodb.repository.MongoRepository; import java.util.*; public interface AuditEventRepository extends MongoRepository<AuditEvent,String>{ List<AuditEvent> findTop50ByActorOrderByCreatedAtDesc(String actor); }

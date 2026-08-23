@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-fincore
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {app: fincore}
+  template:
+    metadata:
+      labels: {app: fincore}
+    spec:
+      containers:
+        - name: fincore
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports: [{containerPort: 8080}]
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.env.SPRING_PROFILES_ACTIVE | quote }}
