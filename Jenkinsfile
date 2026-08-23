@@ -64,10 +64,10 @@ pipeline {
                     )
                 ]) {
 
-                    // Remove previous application container if it exists
+                    // Remove previous FinCore container if it exists
                     bat 'docker rm -f fincore-app 2>nul || ver >nul'
 
-                    // Deploy the newly built FinCore image
+                    // Deploy newly built image
                     bat '''
                     docker run -d ^
                     --name fincore-app ^
@@ -92,27 +92,43 @@ pipeline {
 
         stage('Health Check') {
             steps {
-                bat '''
-                powershell -NoProfile -Command ^
-                "$ok=$false; ^
-                for($i=1;$i -le 30;$i++){ ^
-                    try { ^
-                        $r=Invoke-RestMethod 'http://localhost:8081/actuator/health'; ^
-                        if($r.status -eq 'UP'){ ^
-                            Write-Host 'FinCore health: UP'; ^
-                            $ok=$true; ^
-                            break ^
-                        } ^
-                    } catch { ^
-                        Write-Host ('Waiting for FinCore... attempt ' + $i); ^
-                        Start-Sleep -Seconds 2 ^
-                    } ^
-                }; ^
-                if(-not $ok){ ^
-                    Write-Host 'FinCore application failed health check'; ^
-                    docker logs fincore-app; ^
-                    exit 1 ^
-                }"
+                powershell '''
+                    $ok = $false
+
+                    for ($i = 1; $i -le 30; $i++) {
+
+                        try {
+
+                            $response = Invoke-RestMethod `
+                                -Uri "http://localhost:8081/actuator/health" `
+                                -TimeoutSec 2
+
+                            if ($response.status -eq "UP") {
+
+                                Write-Host "FinCore health: UP"
+
+                                $ok = $true
+
+                                break
+                            }
+
+                        }
+                        catch {
+
+                            Write-Host "Waiting for FinCore... attempt $i"
+                        }
+
+                        Start-Sleep -Seconds 2
+                    }
+
+                    if (-not $ok) {
+
+                        Write-Host "FinCore application failed health check"
+
+                        docker logs fincore-app
+
+                        exit 1
+                    }
                 '''
             }
         }
