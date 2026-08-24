@@ -1,1 +1,111 @@
-package com.sakti.banking.config; import com.sakti.banking.repository.UserRepository; import org.springframework.beans.factory.annotation.Value; import org.springframework.context.annotation.*; import org.springframework.security.config.Customizer; import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity; import org.springframework.security.config.annotation.web.builders.HttpSecurity; import org.springframework.security.core.userdetails.*; import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; import org.springframework.security.crypto.password.PasswordEncoder; import org.springframework.security.web.SecurityFilterChain; import org.springframework.web.cors.*; import java.util.*; @Configuration @EnableMethodSecurity public class SecurityConfig { @Bean PasswordEncoder passwordEncoder(){return new BCryptPasswordEncoder();} @Bean UserDetailsService userDetailsService(UserRepository users){return username->users.findByEmailIgnoreCase(username).map(u->User.withUsername(u.getEmail()).password(u.getPassword()).roles(u.getRole().name()).disabled(!u.isEnabled()).build()).orElseThrow(()->new UsernameNotFoundException("User not found"));} @Bean CorsConfigurationSource corsConfigurationSource(@Value("${fincore.cors.origins}") String origins){CorsConfiguration c=new CorsConfiguration();c.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).filter(s->!s.isBlank()).toList());c.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));c.setAllowedHeaders(List.of("Authorization","Content-Type","Accept"));c.setAllowCredentials(true);UrlBasedCorsConfigurationSource s=new UrlBasedCorsConfigurationSource();s.registerCorsConfiguration("/**",c);return s;} @Bean SecurityFilterChain securityFilterChain(HttpSecurity http)throws Exception{http.csrf(csrf->csrf.disable()).cors(Customizer.withDefaults()).headers(h->h.frameOptions(f->f.sameOrigin())).authorizeHttpRequests(auth->auth.requestMatchers("/api/auth/register","/actuator/health","/actuator/info","/actuator/prometheus").permitAll().requestMatchers("/api/admin/**").hasRole("ADMIN").anyRequest().authenticated()).httpBasic(Customizer.withDefaults());return http.build();} }
+package com.sakti.banking.config;
+
+import com.sakti.banking.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    UserDetailsService userDetailsService(UserRepository users) {
+        return username -> users.findByEmailIgnoreCase(username)
+                .map(u -> User.withUsername(u.getEmail())
+                        .password(u.getPassword())
+                        .roles(u.getRole().name())
+                        .disabled(!u.isEnabled())
+                        .build())
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("User not found"));
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource(
+            @Value("${fincore.cors.origins}") String origins) {
+
+        CorsConfiguration c = new CorsConfiguration();
+
+        c.setAllowedOrigins(
+                Arrays.stream(origins.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isBlank())
+                        .toList()
+        );
+
+        c.setAllowedMethods(
+                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+        );
+
+        c.setAllowedHeaders(
+                List.of("Authorization", "Content-Type", "Accept")
+        );
+
+        c.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", c);
+
+        return source;
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
+        http
+                .csrf(csrf -> csrf.disable())
+
+                .cors(Customizer.withDefaults())
+
+                .headers(headers ->
+                        headers.frameOptions(frame ->
+                                frame.sameOrigin()
+                        )
+                )
+
+                .authorizeHttpRequests(auth -> auth
+
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/actuator/health",
+                                "/actuator/health/**",
+                                "/actuator/info",
+                                "/actuator/prometheus"
+                        ).permitAll()
+
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+
+                        .anyRequest()
+                        .authenticated()
+                )
+
+                .httpBasic(Customizer.withDefaults());
+
+        return http.build();
+    }
+}
