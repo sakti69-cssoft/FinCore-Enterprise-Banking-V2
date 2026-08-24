@@ -5,7 +5,7 @@ metadata:
 
 data:
   SPRING_PROFILES_ACTIVE: {{ .Values.env.SPRING_PROFILES_ACTIVE | quote }}
-  DB_URL: {{ .Values.env.DB_URL | quote }}
-  REDIS_HOST: {{ .Values.env.REDIS_HOST | quote }}
+  DB_URL: {{ printf "jdbc:mysql://%s-mysql:3306/%s?createDatabaseIfNotExist=true&serverTimezone=UTC" .Release.Name .Values.mysql.database | quote }}
+  REDIS_HOST: {{ printf "%s-redis" .Release.Name | quote }}
   REDIS_PORT: {{ .Values.env.REDIS_PORT | quote }}
-  MONGODB_URI: {{ .Values.env.MONGODB_URI | quote }}
+  MONGODB_URI: {{ printf "mongodb://%s-mongo:27017/fincore_audit" .Release.Name | quote }}

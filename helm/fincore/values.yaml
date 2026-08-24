@@ -19,6 +19,7 @@ env:
 
 mysql:
   image: mysql:8.4
+  database: enterprise_banking
   storage: 2Gi
 
 redis:
