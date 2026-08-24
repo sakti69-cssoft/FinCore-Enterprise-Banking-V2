@@ -10,6 +10,16 @@ pipeline {
         maven 'Maven3'
     }
 
+    environment {
+        KUBECONFIG = 'C:\\ProgramData\\Jenkins\\.kube\\config'
+        HELM = 'C:\\ProgramData\\Jenkins\\tools\\helm\\helm.exe'
+        KUBECTL = 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\kubectl.exe'
+
+        DOCKER_IMAGE = 'sakti97/fincore'
+        HELM_RELEASE = 'fincore-helm'
+        HELM_CHART = '.\\helm\\fincore'
+    }
+
     stages {
 
         stage('Checkout') {
@@ -47,88 +57,68 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                bat 'docker build -t fincore:%BUILD_NUMBER% .'
+                bat 'docker build -t %DOCKER_IMAGE%:%BUILD_NUMBER% .'
             }
         }
 
-        stage('Deploy') {
+        stage('Docker Push') {
             steps {
                 withCredentials([
-                    string(
-                        credentialsId: 'fincore-db-password',
-                        variable: 'DB_PASSWORD'
-                    ),
-                    string(
-                        credentialsId: 'fincore-admin-password',
-                        variable: 'FINCORE_ADMIN_PASSWORD'
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKERHUB_USERNAME',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
                     )
                 ]) {
 
-                    // Remove previous FinCore container if it exists
-                    bat 'docker rm -f fincore-app 2>nul || ver >nul'
-
-                    // Deploy newly built image
                     bat '''
-                    docker run -d ^
-                    --name fincore-app ^
-                    --network fincore-enterprise-banking-v2_default ^
-                    -p 8081:8080 ^
-                    -e SPRING_PROFILES_ACTIVE=mysql ^
-                    -e DB_URL=jdbc:mysql://mysql:3306/enterprise_banking ^
-                    -e DB_USERNAME=bankuser ^
-                    -e DB_PASSWORD ^
-                    -e REDIS_HOST=redis ^
-                    -e REDIS_PORT=6379 ^
-                    -e MONGODB_URI=mongodb://mongo:27017/fincore_audit ^
-                    -e SERVER_PORT=8080 ^
-                    -e FINCORE_ADMIN_EMAIL=admin@bank.local ^
-                    -e FINCORE_ADMIN_PASSWORD ^
-                    -e FINCORE_CORS_ORIGINS=http://localhost:5174,http://localhost:5173 ^
-                    fincore:%BUILD_NUMBER%
+                    @echo %DOCKERHUB_TOKEN% | docker login -u %DOCKERHUB_USERNAME% --password-stdin
                     '''
+
+                    bat 'docker push %DOCKER_IMAGE%:%BUILD_NUMBER%'
+
+                    bat 'docker logout'
                 }
             }
         }
 
-        stage('Health Check') {
+        stage('Helm Deploy') {
             steps {
-                powershell '''
-                    $ok = $false
+                bat '''
+                "%HELM%" upgrade %HELM_RELEASE% %HELM_CHART% ^
+                --install ^
+                --namespace default ^
+                --set image.repository=%DOCKER_IMAGE% ^
+                --set image.tag=%BUILD_NUMBER% ^
+                --set image.pullPolicy=Always ^
+                --wait ^
+                --timeout 5m
+                '''
+            }
+        }
 
-                    for ($i = 1; $i -le 30; $i++) {
+        stage('Kubernetes Health Check') {
+            steps {
 
-                        try {
+                bat '''
+                "%KUBECTL%" rollout status deployment/%HELM_RELEASE%-fincore ^
+                --namespace default ^
+                --timeout=180s
+                '''
 
-                            $response = Invoke-RestMethod `
-                                -Uri "http://localhost:8081/actuator/health" `
-                                -TimeoutSec 2
+                bat '''
+                "%KUBECTL%" wait ^
+                --for=condition=ready ^
+                pod ^
+                -l app=fincore,instance=%HELM_RELEASE% ^
+                --namespace default ^
+                --timeout=180s
+                '''
 
-                            if ($response.status -eq "UP") {
-
-                                Write-Host "FinCore health: UP"
-
-                                $ok = $true
-
-                                break
-                            }
-
-                        }
-                        catch {
-
-                            Write-Host "Waiting for FinCore... attempt $i"
-                        }
-
-                        Start-Sleep -Seconds 2
-                    }
-
-                    if (-not $ok) {
-
-                        Write-Host "FinCore application failed health check"
-
-                        docker logs fincore-app
-
-                        exit 1
-                    }
+                bat '''
+                "%KUBECTL%" get pods ^
+                -l instance=%HELM_RELEASE% ^
+                --namespace default
                 '''
             }
         }
@@ -142,11 +132,12 @@ pipeline {
         }
 
         success {
-            echo '=============================================='
+            echo '================================================='
             echo 'FinCore CI/CD pipeline completed successfully.'
-            echo 'Application: http://localhost:8081'
-            echo 'Health: http://localhost:8081/actuator/health'
-            echo '=============================================='
+            echo 'Docker image pushed to Docker Hub.'
+            echo 'Helm deployment completed.'
+            echo 'Kubernetes pods are READY.'
+            echo '================================================='
         }
 
         failure {
