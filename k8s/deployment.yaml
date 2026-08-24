@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: fincore
-          image: fincore:7
+          image: fincore:8
           imagePullPolicy: Never
 
           ports:
