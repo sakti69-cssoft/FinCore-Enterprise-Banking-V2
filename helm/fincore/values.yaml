@@ -1,9 +1,28 @@
 replicaCount: 2
+
 image:
-  repository: YOUR_DOCKERHUB_USER/fincore
-  tag: latest
+  repository: fincore
+  tag: "8"
+  pullPolicy: Never
+
 service:
   type: ClusterIP
   port: 80
+  targetPort: 8080
+
 env:
   SPRING_PROFILES_ACTIVE: mysql
+  DB_URL: "jdbc:mysql://mysql:3306/enterprise_banking?createDatabaseIfNotExist=true&serverTimezone=UTC"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  MONGODB_URI: "mongodb://mongo:27017/fincore_audit"
+
+mysql:
+  image: mysql:8.4
+  storage: 2Gi
+
+redis:
+  image: redis:7.4-alpine
+
+mongo:
+  image: mongo:8.0

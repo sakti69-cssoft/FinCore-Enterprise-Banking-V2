@@ -2,18 +2,48 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}-fincore
+
 spec:
   replicas: {{ .Values.replicaCount }}
+
   selector:
-    matchLabels: {app: fincore}
+    matchLabels:
+      app: fincore
+      instance: {{ .Release.Name }}
+
   template:
     metadata:
-      labels: {app: fincore}
+      labels:
+        app: fincore
+        instance: {{ .Release.Name }}
+
     spec:
       containers:
         - name: fincore
+
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          ports: [{containerPort: 8080}]
-          env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.env.SPRING_PROFILES_ACTIVE | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-fincore-config
+
+            - secretRef:
+                name: fincore-secrets
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: {{ .Values.service.targetPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 20
