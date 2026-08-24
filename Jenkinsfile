@@ -71,8 +71,16 @@ pipeline {
                     )
                 ]) {
 
-                    bat '''
-                    @echo %DOCKERHUB_TOKEN% | docker login -u %DOCKERHUB_USERNAME% --password-stdin
+                    powershell '''
+                        Write-Host "Logging into Docker Hub as $env:DOCKERHUB_USERNAME"
+
+                        $env:DOCKERHUB_TOKEN | docker login `
+                            -u $env:DOCKERHUB_USERNAME `
+                            --password-stdin
+
+                        if ($LASTEXITCODE -ne 0) {
+                            exit $LASTEXITCODE
+                        }
                     '''
 
                     bat 'docker push %DOCKER_IMAGE%:%BUILD_NUMBER%'
