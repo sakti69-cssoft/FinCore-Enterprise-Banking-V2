@@ -64,32 +64,65 @@ pipeline {
         stage('Docker Push') {
             steps {
                 withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKERHUB_USERNAME',
-                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    string(
+                        credentialsId: 'dockerhub-token-v2',
+                        variable: 'DOCKERHUB_TOKEN'
                     )
                 ]) {
-
                     powershell '''
-                        Write-Host "Logging into Docker Hub as $env:DOCKERHUB_USERNAME"
+                        $configDir = Join-Path $env:WORKSPACE ".docker-temp"
+                        New-Item -ItemType Directory -Force -Path $configDir | Out-Null
 
-                        $env:DOCKERHUB_TOKEN | docker login `
-                            -u $env:DOCKERHUB_USERNAME `
-                            --password-stdin
+                        try {
+                            $pair = "sakti97:$($env:DOCKERHUB_TOKEN)"
 
-                        if ($LASTEXITCODE -ne 0) {
-                            exit $LASTEXITCODE
+                            $auth = [Convert]::ToBase64String(
+                                [Text.Encoding]::ASCII.GetBytes($pair)
+                            )
+
+                            $config = @{
+                                auths = @{
+                                    "https://index.docker.io/v1/" = @{
+                                        auth = $auth
+                                    }
+                                }
+                            } | ConvertTo-Json -Depth 5
+
+                            $configFile = Join-Path $configDir "config.json"
+                            Set-Content -Path $configFile -Value $config -Encoding ASCII
+
+                            $image = "$($env:DOCKER_IMAGE):$($env:BUILD_NUMBER)"
+                            $pushOk = $false
+
+                            for ($attempt = 1; $attempt -le 3; $attempt++) {
+                                Write-Host "Docker push attempt $attempt of 3: $image"
+
+                                docker --config $configDir push $image
+
+                                if ($LASTEXITCODE -eq 0) {
+                                    $pushOk = $true
+                                    break
+                                }
+
+                                if ($attempt -lt 3) {
+                                    Write-Host "Push failed. Retrying in 10 seconds..."
+                                    Start-Sleep -Seconds 10
+                                }
+                            }
+
+                            if (-not $pushOk) {
+                                throw "Docker Hub push failed after 3 attempts."
+                            }
+
+                            Write-Host "Docker Hub push: SUCCESS"
+                        }
+                        finally {
+                            Remove-Item $configDir -Recurse -Force -ErrorAction SilentlyContinue
                         }
                     '''
-
-                    bat 'docker push %DOCKER_IMAGE%:%BUILD_NUMBER%'
-
-                    bat 'docker logout'
                 }
             }
         }
-
         stage('Helm Deploy') {
             steps {
                 bat '''
