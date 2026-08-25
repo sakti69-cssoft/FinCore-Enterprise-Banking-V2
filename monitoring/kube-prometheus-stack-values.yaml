@@ -1,0 +1,27 @@
+﻿alertmanager:
+  alertmanagerSpec:
+    resources:
+      limits:
+        memory: 128Mi
+      requests:
+        memory: 64Mi
+grafana:
+  livenessProbe:
+    failureThreshold: 20
+    initialDelaySeconds: 300
+  readinessProbe:
+    initialDelaySeconds: 60
+    timeoutSeconds: 5
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      memory: 256Mi
+prometheus:
+  prometheusSpec:
+    resources:
+      limits:
+        memory: 512Mi
+      requests:
+        memory: 256Mi
+    retention: 6h

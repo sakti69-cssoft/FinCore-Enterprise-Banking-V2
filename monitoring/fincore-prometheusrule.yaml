@@ -1,0 +1,39 @@
+﻿apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: fincore-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: fincore.rules
+      rules:
+
+        - alert: FinCoreInstanceDown
+          expr: up{service="fincore-helm-fincore"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "FinCore instance is down"
+            description: "A FinCore application instance has been unreachable for more than 2 minutes."
+
+        - alert: FinCoreHigh5xxErrorRate
+          expr: sum(rate(http_server_requests_seconds_count{service="fincore-helm-fincore",status=~"5.."}[5m])) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "FinCore HTTP 5xx error rate is high"
+            description: "FinCore is producing more than 0.05 server errors per second."
+
+        - alert: FinCoreHighCPUUsage
+          expr: avg(process_cpu_usage{service="fincore-helm-fincore"}) * 100 > 80
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "FinCore CPU usage is high"
+            description: "Average FinCore JVM process CPU usage has remained above 80 percent for 5 minutes."
