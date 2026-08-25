@@ -12,3 +12,21 @@ frontend/node_modules/
 frontend/dist/
 
 *.tar
+
+# Environment / secrets
+.env.*
+!.env.example
+
+# Private keys / certificates / keystores
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Real Kubernetes / Helm secret files
+k8s/secret.yaml
+k8s/secrets.yaml
+**/secret-values.yaml
+**/secrets.yaml

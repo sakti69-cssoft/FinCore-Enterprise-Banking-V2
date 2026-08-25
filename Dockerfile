@@ -20,8 +20,9 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /application
 
-RUN mkdir -p /application/lib
-
+RUN addgroup -S -g 10001 fincore && \
+    adduser -S -D -H -u 10001 -G fincore fincore && \
+    mkdir -p /application/lib
 COPY --from=builder /builder/split/1/ ./lib/
 COPY --from=builder /builder/split/2/ ./lib/
 COPY --from=builder /builder/split/3/ ./lib/
@@ -34,5 +35,7 @@ COPY --from=builder /builder/extracted/snapshot-dependencies/ ./
 COPY --from=builder /builder/extracted/application/ ./
 
 EXPOSE 8080
+
+USER 10001:10001
 
 ENTRYPOINT ["java","-jar","application.jar"]
